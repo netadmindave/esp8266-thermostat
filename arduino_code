@@ -66,8 +66,8 @@ void setup() {
     pinMode(buildingFan, OUTPUT);
     pinMode(buildingCompressor, OUTPUT);
     pinMode(ledIndicator, OUTPUT);
-    //pinMode(startButton, INPUT);
-    //pinMode(stopButton, INPUT);
+    pinMode(D8, OUTPUT);
+   
 
     //temperature monitor
     dht.begin();
@@ -78,7 +78,7 @@ void setup() {
     digitalWrite(buildingFan, HIGH);
     digitalWrite(buildingCompressor, HIGH);
     digitalWrite(ledIndicator, LOW);
-
+    digitalWrite(D8, HIGH);
 
     Serial.println("start delay");
     //delay to not kill compressor on start up
@@ -92,9 +92,9 @@ void loop() {
     //get temperature
     tempReading = dht.readTemperature(true);
     if (tempReading < 115){
-        actualTemp = tempReading;
-    }else{
-        actualTemp = 0;
+        if (tempReading > 50){
+            actualTemp = tempReading;
+        }
     }
     Serial.println("Actual Temp: ");
     Serial.println(actualTemp);
@@ -108,9 +108,9 @@ void loop() {
     }
 
     if(stopButton.isPressed()){
-        stopButtonStatus = 1;
-    }else{
         stopButtonStatus = 0;
+    }else{
+        stopButtonStatus = 1;
     }
 
 
@@ -141,7 +141,7 @@ void loop() {
     }
 
     //turn off the fan
-    if (0 == compressorStatus && 0 == fanTime && 0 == fanStatus && 0 == airConditionerStatus){
+    if (0 == compressorStatus && 0 == fanTime && 1 == fanStatus && 0 == airConditionerStatus){
         digitalWrite(wallFan, HIGH);
         digitalWrite(buildingFan, HIGH);
         fanStatus = 0;
@@ -159,7 +159,7 @@ void loop() {
     if (1 == airConditionerStatus && runTime > 0 && 0 == compressorTime){
         digitalWrite(wallFan, LOW);
         digitalWrite(wallCompressor, LOW);
-        digitalWrite(buildingFan, HIGH);
+        digitalWrite(buildingFan, LOW);
         digitalWrite(buildingCompressor, LOW);
         compressorTime = (compressorDelay * 30);
         fanStatus = 1;
@@ -208,6 +208,10 @@ void loop() {
     Serial.println(fanTime);
     Serial.println("LED: ");
     Serial.println(ledIndicatorStatus);
+    Serial.println("Stop Button: ");
+    Serial.println(stopButton.isPressed());
+    Serial.println("Start Button: ");
+    Serial.println(startButton.isPressed());
     Serial.println("-----------------------------------------------");
     //Delay each loop
     delay(2000);
