@@ -28,7 +28,7 @@ Button startButton = Button(D6,PULLDOWN);
 Button stopButton = Button(D5,PULLDOWN);
 
 //assign variables
-int statupDelay = 300; //in seconds
+int startupDelay = 300; //in seconds
 int targetTemp = 78;
 int actualTemp;
 int tempReading;
@@ -83,8 +83,8 @@ void setup() {
 
     Serial.println("start delay");
     //delay to not kill compressor on start up
-    for (statupDelay; statupDelay > 0; statupDelay--) {
-        Serial.println(statupDelay);
+    for (startupDelay; startupDelay > 0; startupDelay--) {
+        Serial.println(startupDelay);
         delay(1000); 
     }
 }
@@ -214,5 +214,8 @@ void loop() {
     delay(2000);
     
 }
+
+
+
 
 
