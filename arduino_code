@@ -1,5 +1,3 @@
-
-
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <DHT.h>
@@ -133,7 +131,7 @@ void loop() {
     }
 
     //turn off the compressor and start the timer
-    if (compressorTime == 0 && compressorStatus == 1 && airConditionerStatus == 0){
+    if (0 == compressorTime && 1 == compressorStatus && 0 == airConditionerStatus){
         digitalWrite(wallCompressor, HIGH);
         digitalWrite(buildingCompressor, HIGH);
         compressorStatus = 0;
@@ -143,7 +141,7 @@ void loop() {
     }
 
     //turn off the fan
-    if (compressorStatus == 0 && fanTime == 0 && fanStatus == 1 && airConditionerStatus == 0){
+    if (0 == compressorStatus && 0 == fanTime && 0 == fanStatus && 0 == airConditionerStatus){
         digitalWrite(wallFan, HIGH);
         digitalWrite(buildingFan, HIGH);
         fanStatus = 0;
@@ -151,14 +149,14 @@ void loop() {
     }
 
     //start the shutdown process when the 2 hours is over
-    if (runTime == 0){
+    if (0 == runTime){
         ledIndicatorStatus = 0;
         airConditionerStatus = 0;
         Serial.println("Out of Time. Please Insert Coin to Continue");
     }
 
     //turn on the air conditioner
-    if (airConditionerStatus == 1 && runTime > 0 && compressorTime == 0){
+    if (1 == airConditionerStatus && runTime > 0 && 0 == compressorTime){
         digitalWrite(wallFan, LOW);
         digitalWrite(wallCompressor, LOW);
         digitalWrite(buildingFan, HIGH);
@@ -179,17 +177,17 @@ void loop() {
     }
 
     //check startbutton
-    if (startButtonStatus == 1){
+    if (1 == startButtonStatus){
         runTime = (maxRunTime * 1800);
     }
 
     //check stopbutton
-    if (stopButtonStatus == 1){
+    if (1 == stopButtonStatus){
         runTime = 0;
     }
 
     //LED indicator
-    if (ledIndicatorStatus == 1){
+    if (1 == ledIndicatorStatus){
         digitalWrite(ledIndicator, HIGH);
     }else{
         digitalWrite(ledIndicator, LOW);
@@ -215,5 +213,3 @@ void loop() {
     delay(2000);
     
 }
-
-
