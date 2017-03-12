@@ -1,6 +1,13 @@
-#include <Wire.h>
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <DHT.h>
+#include <Button.h>
+
+//temperature monitor
+#define DHTPIN D7
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 //WiFi info
 const char* ssid     = "ssid";
@@ -12,30 +19,32 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 //Assign pins to relays and buttons
-int wallFan = D0;  
-int wallCompressor = D1; 
-int buildingFan = D2; 
-int buildingCompressor = D3;
-int startButton = D4;
-int stopButton = D5;
-int ledIndicator = D6;
-int sda = D7;
-int scl = D8;
+int wallFan = D3;  
+int wallCompressor = D4; 
+int buildingFan = D1; 
+int buildingCompressor = D2;
+int ledIndicator = D0;
+Button startButton = Button(D6,PULLDOWN);
+Button stopButton = Button(D5,PULLDOWN);
 
 //assign variables
+int statupDelay = 300; //in seconds
 int targetTemp = 78;
 int actualTemp;
+int tempReading;
 int fanTime = 0;
 int compressorTime = 0;
 int fanStatus = 0;
 int compressorStatus = 0;
 int airConditionerStatus = 0;
 int ledIndicatorStatus = 0;
-int maxRunTime = 7200; // In seconds
+int maxRunTime = 2; // In hours
 int runTime = 0;
-int tmp102Address = 0x48;
-int startButtonStatus = 0;
-int stopButtonStatus = 0;
+int startButtonStatus;
+int stopButtonStatus;
+int compressorDelay = 5; // In minutes
+int fanDelay = 5; // In minutes
+
 
 void setup() {
     //start serial
@@ -58,29 +67,53 @@ void setup() {
     pinMode(buildingFan, OUTPUT);
     pinMode(buildingCompressor, OUTPUT);
     pinMode(ledIndicator, OUTPUT);
-    pinMode(startButton, INPUT);
-    pinMode(stopButton, INPUT);
+    //pinMode(startButton, INPUT);
+    //pinMode(stopButton, INPUT);
 
-    //i2c for TMP102
-    Wire.begin(sda, scl); 
+    //temperature monitor
+    dht.begin();
 
     //turn off all relays
-    digitalWrite(wallFan, LOW);
-    digitalWrite(wallCompressor, LOW);
-    digitalWrite(buildingFan, LOW);
-    digitalWrite(buildingCompressor, LOW);
+    digitalWrite(wallFan, HIGH);
+    digitalWrite(wallCompressor, HIGH);
+    digitalWrite(buildingFan, HIGH);
+    digitalWrite(buildingCompressor, HIGH);
     digitalWrite(ledIndicator, LOW);
 
+
+    Serial.println("start delay");
     //delay to not kill compressor on start up
-    delay(180000); 
+    for (statupDelay; statupDelay > 0; statupDelay--) {
+        Serial.println(statupDelay);
+        delay(1000); 
+    }
 }
 
 void loop() {
     //get temperature
-    actualTemp = getTemperature();
+    tempReading = dht.readTemperature(true);
+    if (tempReading < 115){
+        actualTemp = tempReading;
+    }else{
+      actualTemp = 0;
+    }
+    Serial.println("Actual Temp: ");
+    Serial.println(actualTemp);
+    
+    
     //check buttons
-    startButtonStatus = digitalRead(startButton);
-    stopButtonStatus = digitalRead(stopButton);
+    if(startButton.isPressed()){
+        startButtonStatus = 1;
+    }else{
+        startButtonStatus = 0;
+    }
+
+    if(stopButton.isPressed()){
+        stopButtonStatus = 1;
+    }else{
+        stopButtonStatus = 0;
+    }
+
 
     //decriment runtime and set led status
     if (runTime > 0){
@@ -100,47 +133,53 @@ void loop() {
 
     //turn off the compressor and start the timer
     if (compressorTime == 0 && compressorStatus == 1 && airConditionerStatus == 0){
-        digitalWrite(wallCompressor, LOW);
-        digitalWrite(buildingCompressor, LOW);
+        digitalWrite(wallCompressor, HIGH);
+        digitalWrite(buildingCompressor, HIGH);
         compressorStatus = 0;
-        compressorTime = 300;
-        fanTime = 300;
+        compressorTime = (compressorDelay * 30);
+        fanTime = (fanDelay *30);
+        Serial.println("Compressor OFF");
     }
 
     //turn off the fan
     if (compressorStatus == 0 && fanTime == 0 && fanStatus == 1 && airConditionerStatus == 0){
-        digitalWrite(wallFan, LOW);
-        digitalWrite(buildingFan, LOW);
+        digitalWrite(wallFan, HIGH);
+        digitalWrite(buildingFan, HIGH);
         fanStatus = 0;
+        Serial.println("Fan OFF");
     }
 
     //start the shutdown process when the 2 hours is over
     if (runTime == 0){
         ledIndicatorStatus = 0;
         airConditionerStatus = 0;
+        Serial.println("AC OFF");
     }
 
     //turn on the air conditioner
     if (airConditionerStatus == 1 && runTime > 0 && compressorTime == 0){
-        digitalWrite(wallFan, HIGH);
-        digitalWrite(wallCompressor, HIGH);
+        digitalWrite(wallFan, LOW);
+        digitalWrite(wallCompressor, LOW);
         digitalWrite(buildingFan, HIGH);
-        digitalWrite(buildingCompressor, HIGH);
-        compressorTime = 300;
+        digitalWrite(buildingCompressor, LOW);
+        compressorTime = (compressorDelay * 30);
         fanStatus = 1;
         compressorStatus = 1;
+        Serial.println("AC ON");
     }
 
     //compare temperature
     if (targetTemp < actualTemp){
-        airConditionerStatus = 1;
+        if (runTime > 0){
+            airConditionerStatus = 1;
+        }
     }else{
         airConditionerStatus = 0;
     }
 
     //check startbutton
     if (startButtonStatus == 1){
-        runTime = maxRunTime;
+        runTime = (maxRunTime * 1800);
     }
 
     //check stopbutton
@@ -149,28 +188,31 @@ void loop() {
     }
 
     //LED indicator
-    if (ledIndicatorStatus = 0){
-        digitalWrite(ledIndicator, LOW);
-    }else{
+    if (ledIndicatorStatus == 1){
         digitalWrite(ledIndicator, HIGH);
+    }else{
+        digitalWrite(ledIndicator, LOW);
     }
 
+    
+    Serial.println("Run Time: ");
+    Serial.println(runTime);
+    Serial.println("AC Status: ");
+    Serial.println(airConditionerStatus);
+    Serial.println("Compressor Status: ");
+    Serial.println(compressorStatus);
+    Serial.println("Compressor Time: ");
+    Serial.println(compressorTime);
+    Serial.println("Fan Status: ");
+    Serial.println(fanStatus);
+    Serial.println("Fan Time: ");
+    Serial.println(fanTime);
+    Serial.println("LED: ");
+    Serial.println(ledIndicatorStatus);
+    Serial.println("-----------------------------------------------");
     //Delay each loop
-    delay(1000);
+    delay(2000);
     
 }
 
 
-float getTemperature(){
-    Wire.requestFrom(tmp102Address,2); 
-
-    byte MSB = Wire.read();
-    byte LSB = Wire.read();
-
-    //it's a 12bit int, using two's compliment for negative
-    int TemperatureSum = ((MSB << 8) | LSB) >> 4; 
-
-    float celsius = TemperatureSum*0.0625;
-    float fahrenheit = (1.8 * celsius) + 32;
-    return fahrenheit;
-}
