@@ -1,4 +1,5 @@
 
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <DHT.h>
@@ -153,7 +154,7 @@ void loop() {
     if (runTime == 0){
         ledIndicatorStatus = 0;
         airConditionerStatus = 0;
-        Serial.println("AC OFF");
+        Serial.println("Out of Time. Please Insert Coin to Continue");
     }
 
     //turn on the air conditioner
@@ -214,8 +215,5 @@ void loop() {
     delay(2000);
     
 }
-
-
-
 
 
